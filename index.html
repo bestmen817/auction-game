@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Слепой Аукцион</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://sad.adsgram.ai/js/sad-index.js"></script>
+<style>
+:root {
+--bg-color: #0f172a;
+--card-bg: #1e293b;
+--accent-color: #3b82f6;
+--accent-hover: #2563eb;
+--text-color: #f8fafc;
+--text-muted: #94a3b8;
+--success-color: #22c55e;
+--danger-color: #ef4444;
+--warning-color: #f59e0b;
+}
+body {
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+background-color: var(--bg-color);
+color: var(--text-color);
+margin: 0;
+padding: 16px;
+display: flex;
+flex-direction: column;
+min-height: 100vh;
+box-sizing: border-box;
+user-select: none;
+}
+.header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+background: var(--card-bg);
+padding: 12px 16px;
+border-radius: 16px;
+margin-bottom: 16px;
+box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+.user-info {
+display: flex;
+align-items: center;
+gap: 10px;
+cursor: pointer;
+}
+.avatar {
+width: 40px;
+height: 40px;
+border-radius: 50%;
+background: var(--accent-color);
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 20px;
+}
+.balance-container {
+background: rgba(255, 255, 255, 0.05);
+padding: 6px 12px;
+border-radius: 20px;
+display: flex;
+align-items: center;
+gap: 6px;
+font-weight: bold;
+color: #facc15;
+}
+.card {
+background: var(--card-bg);
+border-radius: 16px;
+padding: 20px;
+margin-bottom: 16px;
+box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+text-align: center;
+}
+.bank-title {
+font-size: 14px;
+color: var(--text-muted);
+margin-bottom: 4px;
+}
+.bank-amount {
+font-size: 32px;
+font-weight: 800;
+color: var(--success-color);
+margin-bottom: 12px;
+}
+.controls {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 8px;
+margin-bottom: 12px;
+}
+button {
+background: var(--accent-color);
+color: white;
+border: none;
+padding: 12px;
+border-radius: 12px;
+font-weight: 600;
+font-size: 15px;
+cursor: pointer;
+transition: background 0.2s, transform 0.1s;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 6px;
+}
+button:active {
+transform: scale(0.98);
+}
+button:disabled {
+opacity: 0.5;
+cursor: not-allowed;
+filter: grayscale(1);
+}
+.btn-action {
+grid-column: span 3;
+background: var(--success-color);
+padding: 16px;
+font-size: 18px;
+}
+.btn-cancel {
+background: var(--danger-color);
+grid-column: span 3;
+}
+.btn-secondary {
+background: rgba(255, 255, 255, 0.08);
+color: var(--text-color);
+}
+.btn-warning {
+background: var(--warning-color);
+color: #000;
+}
+.spy-section {
+display: flex;
+gap: 8px;
+margin-top: 12px;
+}
+.spy-btn {
+flex: 1;
+}
+.logs {
+background: rgba(0,0,0,0.2);
+border-radius: 12px;
+padding: 12px;
+max-height: 150px;
+overflow-y: auto;
+font-size: 13px;
+text-align: left;
+display: flex;
+flex-direction: column-reverse;
+gap: 6px;
+}
+.log-item {
+padding: 4px 0;
+border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.modal {
+display: none;
+position: fixed;
+top: 0; left: 0; right: 0; bottom: 0;
+background: rgba(0,0,0,0.8);
+align-items: center;
+justify-content: center;
+z-index: 100;
+}
+.modal-content {
+background: var(--card-bg);
+padding: 24px;
+border-radius: 20px;
+width: 80%;
+max-width: 320px;
+text-align: center;
+}
+.avatar-grid {
+display: grid;
+grid-template-columns: repeat(4, 1fr);
+gap: 10px;
+margin: 16px 0;
+}
+.avatar-option {
+font-size: 24px;
+padding: 8px;
+border-radius: 10px;
+background: rgba(255,255,255,0.05);
+cursor: pointer;
+}
+input[type="text"] {
+width: 100%;
+padding: 10px;
+border-radius: 8px;
+border: 1px solid rgba(255,255,255,0.2);
+background: rgba(0,0,0,0.2);
+color: white;
+margin-bottom: 12px;
+box-sizing: border-box;
+}
+</style>
+</head>
+<body>
+<div class="header">
+<div class="user-info" onclick="openProfile()">
+<div class="avatar" id="user-avatar">😎</div>
+<div>
+<div style="font-weight: bold; font-size: 14px;" id="user-name">Игрок</div>
+<div style="font-size: 11px; color: var(--text-muted);">Нажми для смены</div>
+</div>
+</div>
+<div class="balance-container">
+<span>🪙</span>
+<span id="balance">1000</span>
+</div>
+</div>
+<div class="card">
+<div class="bank-title">ТЕКУЩИЙ БАНК РАУНДА</div>
+<div class="bank-amount" id="round-bank">🪙 0</div>
+<div style="margin-bottom: 12px; font-size: 14px; color: var(--text-muted);">
+Ваша ставка: <b id="current-bid" style="color: white;">0</b>
+</div>
+<div class="controls">
+<button onclick="addBid(10)">+10</button>
+<button onclick="addBid(50)">+50</button>
+<button onclick="addBid(100)">+100</button>
+<button class="btn-secondary" onclick="addBid(-50)">-50</button>
+<button class="btn-secondary" onclick="clearBid()">Сброс ❌</button>
+<button class="btn-warning" onclick="makeAllIn()">ALL-IN</button>
+<button class="btn-action" id="btn-place-bid" onclick="placeBid()">Сделать ставку 🚀</button>
+<button class="btn-cancel" id="btn-cancel-bid" onclick="cancelBid()" style="display: none;">Отменить ставку ↩️</button>
+</div>
+<div class="spy-section">
+<button class="btn-secondary spy-btn" id="btn-spy" onclick="useSpy()">
+🕵️ Шпион (<span id="spy-cost">100</span>🪙)
+</button>
+</div>
+</div>
+<div class="card">
+<div style="display: flex; gap: 8px; margin-bottom: 12px;">
+<button class="btn-secondary" style="flex: 1;" id="btn-ad" onclick="watchAd()">📺 Реклама (+100🪙)</button>
+<button class="btn-secondary" style="flex: 1;" onclick="shareGame()">✈️ Поделиться</button>
+</div>
+<button class="btn-secondary" style="width: 100%;" onclick="openChat()">💬 Чат игроков</button>
+</div>
+<div class="card" style="flex: 1; display: flex; flex-direction: column;">
+<div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-align: left;">ИСТОРИЯ РАУНДОВ</div>
+<div class="logs" id="logs"></div>
+</div>
+<!-- Модальное окно профиля -->
+<div class="modal" id="profile-modal">
+<div class="modal-content">
+<h3>Профиль</h3>
+<input type="text" id="input-username" placeholder="Ваше имя">
+<div style="font-size: 12px; color: var(--text-muted);">Выберите аватар:</div>
+<div class="avatar-grid">
+<div class="avatar-option" onclick="selectAvatar('😎')">😎</div>
+<div class="avatar-option" onclick="selectAvatar('🦁')">🦁</div>
+<div class="avatar-option" onclick="selectAvatar('👑')">👑</div>
+<div class="avatar-option" onclick="selectAvatar('🥷')">🥷</div>
+<div class="avatar-option" onclick="selectAvatar('🔥')">🔥</div>
+<div class="avatar-option" onclick="selectAvatar('🤖')">🤖</div>
+<div class="avatar-option" onclick="selectAvatar('🐺')">🐺</div>
+<div class="avatar-option" onclick="selectAvatar('🚀')">🚀</div>
+</div>
+<button style="width: 100%; margin-top: 10px;" onclick="saveProfile()">Сохранить</button>
+</div>
+</div>
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) tg.expand();
+// AdsGram Конфигурация
+const ADSGRAM_BLOCK_ID = "YOUR_BLOCK_ID"; // Замените на ваш ID из AdsGram
+const CHAT_URL = "https://t.me/your_chat_link"; // Замените на ссылку чата
+// Состояние игры
+let state = {
+balance: 1000,
+currentBid: 0,
+hasPlacedBid: false,
+spyCooldown: 0,
+adCooldownRounds: 0, // Кулдаун рекламы в раундах
+userName: "Игрок",
+userAvatar: "😎",
+botBid: 0
+};
+// Загрузка состояния
+function loadState() {
+const saved = localStorage.getItem('auction_state');
+if (saved) {
+state = { ...state, ...JSON.parse(saved) };
+} else if (tg?.initDataUnsafe?.user) {
+state.userName = tg.initDataUnsafe.user.first_name || "Игрок";
+}
+updateUI();
+}
+function saveState() {
+localStorage.setItem('auction_state', JSON.stringify(state));
+}
+function updateUI() {
+document.getElementById('balance').innerText = state.balance;
+document.getElementById('current-bid').innerText = state.currentBid;
+document.getElementById('user-name').innerText = state.userName;
+document.getElementById('user-avatar').innerText = state.userAvatar;
+// Кнопки ставок и отмены
+const btnPlace = document.getElementById('btn-place-bid');
+const btnCancel = document.getElementById('btn-cancel-bid');
+if (state.hasPlacedBid) {
+btnPlace.style.display = 'none';
+btnCancel.style.display = 'block';
+} else {
+btnPlace.style.display = 'block';
+btnCancel.style.display = 'none';
+}
+// Кнопка шпиона
+const btnSpy = document.getElementById('btn-spy');
+if (state.spyCooldown > 0) {
+btnSpy.disabled = true;
+btnSpy.innerText = ⁠🕵️ Шпион (${state.spyCooldown} р.)⁠;
+} else {
+btnSpy.disabled = false;
+btnSpy.innerText = ⁠🕵️ Шпион (100🪙)⁠;
+}
+// Кнопка рекламы (доступна раз в 5 раундов)
+const btnAd = document.getElementById('btn-ad');
+if (state.adCooldownRounds > 0) {
+btnAd.disabled = true;
+btnAd.innerText = ⁠📺 Реклама (${state.adCooldownRounds} р.)⁠;
+} else {
+btnAd.disabled = false;
+btnAd.innerText = ⁠📺 Реклама (+100🪙)⁠;
+}
+// Банк
+const bank = state.hasPlacedBid ? state.currentBid + state.botBid : state.currentBid;
+document.getElementById('round-bank').innerText = ⁠🪙 ${bank}⁠;
+}
+function addBid(amount) {
+if (state.hasPlacedBid) return;
+if (amount < 0 && Math.abs(amount) > state.currentBid) {
+state.currentBid = 0;
+} else if (amount > 0 && state.balance < amount) {
+return;
+} else {
+state.currentBid += amount;
+if (amount > 0) state.balance -= amount;
+else state.balance += Math.abs(amount);
+}
+updateUI();
+}
+function clearBid() {
+if (state.hasPlacedBid) return;
+state.balance += state.currentBid;
+state.currentBid = 0;
+updateUI();
+}
+function makeAllIn() {
+if (state.hasPlacedBid) return;
+state.currentBid += state.balance;
+state.balance = 0;
+updateUI();
+}
+function placeBid() {
+if (state.currentBid <= 0) return;
+state.hasPlacedBid = true;
+// Бот генерирует ставку
+state.botBid = Math.floor(Math.random() * (state.currentBid * 1.5)) + 10;
+updateUI();
+// Подведение итогов раунда через 2 секунды
+setTimeout(resolveRound, 2000);
+}
+function cancelBid() {
+if (!state.hasPlacedBid) return;
+state.balance += state.currentBid;
+state.currentBid = 0;
+state.hasPlacedBid = false;
+state.botBid = 0;
+log("↩️ Вы отменили свою ставку", "var(--text-muted)");
+updateUI();
+saveState();
+}
+function resolveRound() {
+if (!state.hasPlacedBid) return; // Если была отменена
+const totalBank = state.currentBid + state.botBid;
+let win = false;
+if (state.currentBid > state.botBid) {
+state.balance += totalBank;
+win = true;
+log(⁠🎉 Вы выиграли 🪙${totalBank}! (Бот поставил 🪙${state.botBid})⁠, "var(--success-color)");
+} else {
+log(⁠❌ Вы проиграли 🪙${state.currentBid}. (Бот поставил 🪙${state.botBid})⁠, "var(--danger-color)");
+}
+// Уменьшаем кулдауны
+if (state.spyCooldown > 0) state.spyCooldown--;
+if (state.adCooldownRounds > 0) state.adCooldownRounds--;
+state.currentBid = 0;
+state.hasPlacedBid = false;
+state.botBid = 0;
+saveState();
+updateUI();
+}
+function useSpy() {
+if (state.balance < 100 || state.spyCooldown > 0) return;
+state.balance -= 100;
+state.spyCooldown = 5;
+// Генерируем примерную ставку бота
+const estimatedBot = state.hasPlacedBid ? state.botBid : Math.floor(Math.random() * 150) + 10;
+alert(⁠🕵️ Шпион докладывает: Бот планирует поставить около 🪙${estimatedBot}⁠);
+updateUI();
+saveState();
+}
+function watchAd() {
+if (state.adCooldownRounds > 0) return;
+if (window.Adsgram) {
+const AdController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+AdController.show().then((result) => {
+if (result.done) {
+grantAdReward();
+}
+}).catch(() => {
+// Симуляция если реклама не загрузилась
+grantAdReward();
+});
+} else {
+// Запасной вариант симуляции
+alert("Просмотр рекламы...");
+setTimeout(grantAdReward, 1000);
+}
+}
+function grantAdReward() {
+state.balance += 100;
+state.adCooldownRounds = 5; // Блокировка на 5 раундов
+log("📺 Получено +100🪙 за просмотр рекламы!", "#facc15");
+updateUI();
+saveState();
+}
+function shareGame() {
+const shareUrl = ⁠https://t.me/share/url?url=https://t.me/blind_auction_game_bot&text=Заходи%20в%20Слепой%20Аукцион!%20Сможешь%20перебить%20мою%20ставку?⁠;
+if (tg) {
+tg.openTelegramLink(shareUrl);
+} else {
+window.open(shareUrl, '_blank');
+}
+}
+function openChat() {
+if (tg) tg.openTelegramLink(CHAT_URL);
+else window.open(CHAT_URL, '_blank');
+}
+function log(text, color) {
+const logsContainer = document.getElementById('logs');
+const item = document.createElement('div');
+item.className = 'log-item';
+item.style.color = color || 'white';
+item.innerText = text;
+logsContainer.prepend(item);
+}
+// Профиль
+function openProfile() {
+document.getElementById('profile-modal').style.display = 'flex';
+document.getElementById('input-username').value = state.userName;
+}
+function selectAvatar(emoji) {
+state.userAvatar = emoji;
+updateUI();
+}
+function saveProfile() {
+const val = document.getElementById('input-username').value.trim();
+if (val) state.userName = val;
+document.getElementById('profile-modal').style.display = 'none';
+saveState();
+updateUI();
+}
+// Инициализация
+loadState();
+</script>
+</body>
+</html>
